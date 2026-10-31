@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물극필반 - 포트폴리오 리밸런싱 어시스턴트</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            900: '#0b1120',
+                            800: '#111b33',
+                            700: '#1a2747',
+                            600: '#23345c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: #0b1120;
+            color: #f8fafc;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111b33;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #23345c;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        /* Numeric Input right padding fix */
+        input[type=number] {
+            padding-right: 1.75rem !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Top Header Navigation Bar -->
+    <header class="bg-navy-800/90 backdrop-blur border-b border-slate-800/80 sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center font-extrabold text-xl shadow-lg shadow-blue-500/20 text-white">
+                    ⚖️
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                        물극필반 <span class="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">v1.3 PRO</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400">극에 달하면 반대로 돌아선다 · 3초 자산 리밸런싱 어시스턴트</p>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <nav class="hidden md:flex items-center gap-2">
+                <button onclick="switchTab('calculator')" id="nav-calculator" class="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-blue-600 text-white shadow">
+                    <i class="fa-solid fa-calculator mr-1.5"></i> 리밸런싱 계산기
+                </button>
+                <button onclick="switchTab('visuals')" id="nav-visuals" class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-chart-pie mr-1.5"></i> 포트폴리오 분석
+                </button>
+                <button onclick="switchTab('logs')" id="nav-logs" class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-book-bookmark mr-1.5"></i> 투자 일지
+                </button>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <button id="sync-quote-btn" onclick="syncAllQuotes()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-rotate text-blue-400"></i>
+                    <span>주가 자동 동기화</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-grow">
+
+        <!-- TAB 1: Main Rebalancing Calculator -->
+        <section id="tab-calculator" class="space-y-6">
+
+            <!-- Top Row: Target Ratio Slider & Balance Input -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Target Stock / Cash Ratio Slider -->
+                <div class="lg:col-span-7 bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-blue-400 text-sm"></i>
+                            <h2 class="font-bold text-sm text-slate-200">원터치 타겟 비중 설정</h2>
+                        </div>
+                        <span id="ratio-display" class="font-black text-blue-400 text-base bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                            주식 70% : 현금 30%
+                        </span>
+                    </div>
+
+                    <!-- Slider Bar -->
+                    <div class="space-y-2">
+                        <input type="range" id="stock-ratio-slider" min="0" max="100" value="70" step="5" oninput="updateRatios(this.value)" class="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500 border border-slate-700">
+                        <div class="flex justify-between text-[11px] font-semibold text-slate-400 px-1">
+                            <span>현금 100%</span>
+                            <span>주식 50% : 현금 50%</span>
+                            <span>주식 100%</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Progress Gauge Bar -->
+                    <div class="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-4">
+                        <div class="flex-grow">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400 font-medium">현재 포트폴리오 주식 비중</span>
+                                <span id="current-stock-ratio-text" class="font-bold text-emerald-400">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                                <div id="ratio-progress-bar" class="bg-gradient-to-r from-emerald-500 to-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Mascot Status Icon -->
+                        <div class="flex flex-col items-center justify-center min-w-[70px] p-2 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <div id="mascot-icon" class="text-2xl">⚖️</div>
+                            <span id="mascot-message" class="text-[10px] font-semibold text-emerald-400 text-center">비중 완벽</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cash Balance Input & Assets Overview -->
+                <div class="lg:col-span-5 bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+                            <h2 class="font-bold text-sm text-slate-200">현금 잔고 및 전체 자산</h2>
+                        </div>
+                        <span id="drift-score-badge" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-slate-700 text-slate-300">
+                            괴리율 0%
+                        </span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">현재 사용 가능 현금 잔고 (원)</label>
+                            <div class="relative">
+                                <input type="number" id="cash-balance" value="3000000" oninput="calculatePortfolio()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-base font-bold text-white focus:outline-none focus:border-blue-500 transition-all text-right pr-8">
+                                <span class="absolute right-3 top-3 text-slate-400 text-xs font-bold">원</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
+                            <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block text-[11px]">보유 주식 평가금액</span>
+                                <span id="total-stock-value" class="font-bold text-slate-200 text-sm">0원</span>
+                            </div>
+                            <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block text-[11px]">총 자산 평가금액</span>
+                                <span id="total-asset-value" class="font-extrabold text-blue-400 text-sm">0원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Row: Stock Holdings Table & Instant Order Execution List -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Stock Holdings Input Table -->
+                <div class="lg:col-span-7 bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-blue-400 text-sm"></i>
+                                <h2 class="font-bold text-sm text-slate-200">보유 종목 리스트</h2>
+                                <span class="text-[10px] text-slate-400">(종목 클릭 시 상세 수정)</span>
+                            </div>
+                            <button type="button" onclick="openAddStockModal()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> 종목 추가
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-800 text-slate-400">
+                                        <th class="py-2.5 px-3 font-semibold min-w-[140px]">종목명 / 코드</th>
+                                        <th class="py-2.5 px-3 font-semibold text-right min-w-[100px]">현재가</th>
+                                        <th class="py-2.5 px-3 font-semibold text-right min-w-[80px]">보유 수량</th>
+                                        <th class="py-2.5 px-3 font-semibold text-right min-w-[110px]">평가금액</th>
+                                        <th class="py-2.5 px-3 font-semibold text-right min-w-[70px]">비중</th>
+                                        <th class="py-2.5 px-3 font-semibold text-center min-w-[60px]">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="holdings-table-body" class="divide-y divide-slate-800/60">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+                        <span>목표 주식 금액: <strong id="target-stock-amount" class="text-slate-200">0원</strong></span>
+                        <span>목표 현금 금액: <strong id="target-cash-amount" class="text-slate-200">0원</strong></span>
+                    </div>
+                </div>
+
+                <!-- Rebalancing Orders Output Screen -->
+                <div class="lg:col-span-5 bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between border-l-4 border-l-emerald-500">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-amber-400 text-sm"></i>
+                                <h2 class="font-bold text-sm text-slate-200">리밸런싱 매매 실행 리스트</h2>
+                            </div>
+                            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                즉시 주문 수량
+                            </span>
+                        </div>
+
+                        <!-- Orders Execution List Container -->
+                        <div id="execution-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Simulator Settings -->
+                    <div class="mt-4 pt-3 border-t border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                                <input type="checkbox" id="fractional-support" onchange="calculatePortfolio()" class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
+                                <span>소수점 주식 거래 허용 (0.x주)</span>
+                            </label>
+                            <span class="text-[11px] text-slate-500">체크 해제 시 정수 주식 단위</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-[11px]">
+                            <div>
+                                <span class="text-slate-400 block">수수료 (%)</span>
+                                <input type="number" id="fee-rate" value="0.015" step="0.005" oninput="calculatePortfolio()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right text-slate-200 font-semibold pr-6">
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block">거래세 (%)</span>
+                                <input type="number" id="tax-rate" value="0.18" step="0.01" oninput="calculatePortfolio()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right text-slate-200 font-semibold pr-6">
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block">분할 매매 일수</span>
+                                <select id="split-days" onchange="calculatePortfolio()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 font-semibold">
+                                    <option value="1">일시 주문</option>
+                                    <option value="3">3일 분할</option>
+                                    <option value="5">5일 분할</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="split-order-summary" class="text-[11px] text-slate-400 text-right font-medium">
+                            <!-- Trade Cash Flow -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 2: Visual Donut Chart & Gap Bars -->
+        <section id="tab-visuals" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- Donut Chart -->
+                <div class="bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg">
+                    <h3 class="font-bold text-sm text-slate-200 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-blue-400"></i> 자산 비중 비교 도넛 차트
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="portfolioDonutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Target vs Current Gap Bars -->
+                <div class="bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                    <h3 class="font-bold text-sm text-slate-200 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-emerald-400"></i> 종목별 목표 vs 현재 비중 갭(Gap)
+                    </h3>
+                    <div id="gap-bars-container" class="space-y-4">
+                        <!-- Dynamic Progress Bars -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 3: Rebalancing Log Journal -->
+        <section id="tab-logs" class="hidden space-y-6">
+            <div class="bg-navy-800 rounded-2xl p-5 border border-slate-800 shadow-lg space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark text-amber-400"></i> 리밸런싱 일지 및 메모
+                        </h3>
+                        <p class="text-xs text-slate-400">정기 리밸런싱 기록과 투자 일기를 남겨 포트폴리오 변화를 추적하세요.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="saveLogSnapshot()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-camera"></i> 일지 스냅샷 저장
+                        </button>
+                    </div>
+                </div>
+
+                <div id="log-list-container" class="space-y-3">
+                    <!-- Dynamic Log Items -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Stock Add / Edit Modal -->
+    <div id="stock-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-navy-800 rounded-2xl border border-slate-700 max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 id="modal-title" class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-blue-500"></i> 종목 관리
+                </h3>
+                <button type="button" onclick="closeStockModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="stock-form" onsubmit="event.preventDefault(); saveStock();" class="space-y-3">
+                <input type="hidden" id="edit-stock-id" value="">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">종목명</label>
+                    <div class="flex gap-1.5">
+                        <input type="text" id="modal-name" required autocomplete="off" placeholder="예: 삼성전자, 테슬라, GM, 리비안" oninput="handleModalNameInput(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <button type="button" onclick="openTickerSearchModal()" class="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i> 종목코드 조회
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">종목코드 / 티커</label>
+                        <input type="text" id="modal-ticker" placeholder="예: 005930.KS, TSLA, GM" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">현재가 (원) <span class="text-[10px] text-blue-400 font-normal">수동 입력 가능</span></label>
+                        <input type="number" id="modal-price" required placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white focus:outline-none focus:border-blue-500 text-right">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">보유 수량 (주)</label>
+                    <input type="number" id="modal-qty" required placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white focus:outline-none focus:border-blue-500 text-right">
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+                    <button type="button" onclick="closeStockModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all">취소</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ticker Lookup Modal -->
+    <div id="ticker-search-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-navy-800 rounded-2xl border border-slate-700 max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-blue-400"></i> 종목코드 조회
+                </h3>
+                <button type="button" onclick="closeTickerSearchModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <input type="text" id="ticker-search-input" placeholder="종목명 또는 종목코드 검색 (예: GM, 리비안, 주성, 동서)" oninput="renderTickerSearchResults(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                <div id="ticker-search-results" class="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-800">
+                    <!-- Dynamic Search Results -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        // Pre-loaded Stock Database (KOSPI/KOSDAQ & US Stock Master Data)
+        const stockDatabase = [
+            // KRX Stocks
+            { name: '삼성전자', ticker: '005930.KS', price: 74500, category: 'KRX' },
+            { name: 'SK하이닉스', ticker: '000660.KS', price: 185000, category: 'KRX' },
+            { name: '주성엔지니어링', ticker: '036930.KQ', price: 165000, category: 'KRX' },
+            { name: '동서', ticker: '026960.KS', price: 18450, category: 'KRX' },
+            { name: '삼천당제약', ticker: '000250.KQ', price: 142000, category: 'KRX' },
+            { name: '한미반도체', ticker: '042700.KS', price: 135000, category: 'KRX' },
+            { name: 'NAVER', ticker: '035420.KS', price: 189000, category: 'KRX' },
+            { name: '카카오', ticker: '035720.KS', price: 42500, category: 'KRX' },
+            { name: '에코프로비엠', ticker: '247540.KQ', price: 180000, category: 'KRX' },
+            { name: '알테오젠', ticker: '196170.KQ', price: 290000, category: 'KRX' },
+            { name: '셀트리온', ticker: '068270.KS', price: 195000, category: 'KRX' },
+
+            // US Stocks
+            { name: '제너럴 모터스 (GM)', ticker: 'GM', price: 65000, category: 'US' },
+            { name: '리비안 (Rivian)', ticker: 'RIVN', price: 18500, category: 'US' },
+            { name: '테슬라 (Tesla)', ticker: 'TSLA', price: 340000, category: 'US' },
+            { name: '엔비디아 (NVIDIA)', ticker: 'NVDA', price: 180000, category: 'US' },
+            { name: '애플 (Apple)', ticker: 'AAPL', price: 310000, category: 'US' },
+            { name: '마이크로소프트', ticker: 'MSFT', price: 600000, category: 'US' },
+            { name: '알파벳 / 구글', ticker: 'GOOGL', price: 240000, category: 'US' },
+            { name: '아마존', ticker: 'AMZN', price: 260000, category: 'US' },
+            { name: 'QQQ (나스닥100 ETF)', ticker: 'QQQ', price: 680000, category: 'US' },
+            { name: 'SPY (S&P500 ETF)', ticker: 'SPY', price: 780000, category: 'US' },
+            { name: 'SCHD (미국배당 다우존스)', ticker: 'SCHD', price: 39000, category: 'US' }
+        ];
+
+        // Portfolio State
+        let holdings = [
+            { id: 1, name: '삼성전자', ticker: '005930.KS', price: 74500, qty: 50 },
+            { id: 2, name: '테슬라 (Tesla)', ticker: 'TSLA', price: 340000, qty: 10 }
+        ];
+        let logs = [];
+        let portfolioChart = null;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            renderHoldingsTable();
+            calculatePortfolio();
+            initChart();
+        });
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            ['calculator', 'visuals', 'logs'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).className = "px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).className = "px-4 py-2 rounded-lg text-sm font-medium transition-all bg-blue-600 text-white shadow";
+            if (tabId === 'visuals') updateChart();
+        }
+
+        // Slider Ratio Update
+        function updateRatios(val) {
+            const stockPct = parseInt(val);
+            const cashPct = 100 - stockPct;
+            document.getElementById('ratio-display').innerText = `주식 ${stockPct}% : 현금 ${cashPct}%`;
+            calculatePortfolio();
+        }
+
+        // Core Rebalancing Calculator Logic
+        function calculatePortfolio() {
+            const cashBalance = parseFloat(document.getElementById('cash-balance').value) || 0;
+            const targetStockPct = parseInt(document.getElementById('stock-ratio-slider').value);
+
+            let totalStockValue = 0;
+            holdings.forEach(h => {
+                totalStockValue += (h.price * h.qty);
+            });
+
+            const totalAssets = cashBalance + totalStockValue;
+            const targetStockValue = totalAssets * (targetStockPct / 100);
+            const targetCashValue = totalAssets - targetStockValue;
+
+            const currentStockPct = totalAssets > 0 ? ((totalStockValue / totalAssets) * 100).toFixed(1) : 0;
+            const driftScore = Math.abs(currentStockPct - targetStockPct).toFixed(1);
+
+            document.getElementById('total-stock-value').innerText = `${totalStockValue.toLocaleString()}원`;
+            document.getElementById('total-asset-value').innerText = `${totalAssets.toLocaleString()}원`;
+            document.getElementById('target-stock-amount').innerText = `${Math.round(targetStockValue).toLocaleString()}원`;
+            document.getElementById('target-cash-amount').innerText = `${Math.round(targetCashValue).toLocaleString()}원`;
+            document.getElementById('current-stock-ratio-text').innerText = `${currentStockPct}%`;
+            document.getElementById('ratio-progress-bar').style.width = `${Math.min(currentStockPct, 100)}%`;
+
+            // Drift Badge Update
+            const driftBadge = document.getElementById('drift-score-badge');
+            driftBadge.innerText = `괴리율 ${driftScore}%`;
+            if (driftScore < 3) {
+                driftBadge.className = "text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                document.getElementById('mascot-icon').innerText = "⚖️";
+                document.getElementById('mascot-message').innerText = "비중 완벽";
+            } else {
+                driftBadge.className = "text-xs px-2.5 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                document.getElementById('mascot-icon').innerText = "⚡";
+                document.getElementById('mascot-message').innerText = "조절 필요";
+            }
+
+            renderExecutionOrders(targetStockValue, totalStockValue);
+        }
+
+        // Render Instant Orders List
+        function renderExecutionOrders(targetStockVal, totalStockVal) {
+            const container = document.getElementById('execution-list');
+            container.innerHTML = '';
+
+            const isFractional = document.getElementById('fractional-support').checked;
+            const numHoldings = holdings.length;
+
+            if (numHoldings === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">보유 종목을 추가해주세요.</div>`;
+                return;
+            }
+
+            // Equal weight distribution among holdings for target allocation
+            const perStockTargetVal = targetStockVal / numHoldings;
+
+            holdings.forEach(h => {
+                const currentVal = h.price * h.qty;
+                const diffVal = perStockTargetVal - currentVal;
+                let tradeQty = h.price > 0 ? (diffVal / h.price) : 0;
+
+                if (!isFractional) {
+                    tradeQty = tradeQty > 0 ? Math.floor(tradeQty) : Math.ceil(tradeQty);
+                } else {
+                    tradeQty = parseFloat(tradeQty.toFixed(2));
+                }
+
+                if (Math.abs(tradeQty) > 0) {
+                    const isBuy = tradeQty > 0;
+                    const actionText = isBuy ? '매수' : '매도';
+                    const badgeClass = isBuy ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+
+                    const itemHtml = `
+                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <span class="font-bold text-xs text-slate-200 block">${h.name}</span>
+                                <span class="text-[10px] text-slate-400">${h.ticker} · 현재가 ${h.price.toLocaleString()}원</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-black px-2 py-0.5 rounded border ${badgeClass}">
+                                    ${actionText} ${Math.abs(tradeQty).toLocaleString()}주
+                                </span>
+                                <span class="block text-[10px] text-slate-400 mt-0.5">약 ${Math.abs(Math.round(tradeQty * h.price)).toLocaleString()}원</span>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += itemHtml;
+                }
+            });
+
+            if (container.innerHTML === '') {
+                container.innerHTML = `<div class="text-center py-8 text-emerald-400 text-xs font-bold">🎉 모든 종목이 목표 비중에 완벽히 도달했습니다!</div>`;
+            }
+        }
+
+        // Render Table Rows
+        function renderHoldingsTable() {
+            const tbody = document.getElementById('holdings-table-body');
+            tbody.innerHTML = '';
+
+            let totalVal = 0;
+            holdings.forEach(h => totalVal += (h.price * h.qty));
+
+            holdings.forEach(h => {
+                const itemVal = h.price * h.qty;
+                const weight = totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : '0.0';
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3">
+                        <div class="font-bold text-slate-200">${h.name}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">${h.ticker}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-semibold text-slate-200">${h.price.toLocaleString()}원</td>
+                    <td class="py-2.5 px-3 text-right text-slate-300 font-bold">${h.qty}주</td>
+                    <td class="py-2.5 px-3 text-right font-bold text-blue-400">${itemVal.toLocaleString()}원</td>
+                    <td class="py-2.5 px-3 text-right font-bold text-emerald-400">${weight}%</td>
+                    <td class="py-2.5 px-3 text-center">
+                        <button onclick="openEditStockModal(${h.id})" class="text-slate-400 hover:text-blue-400 p-1 mr-1" title="수정">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteStock(${h.id})" class="text-slate-400 hover:text-red-400 p-1" title="삭제">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Open Modal Function (Fixes ReferenceError)
+        function openAddStockModal() {
+            document.getElementById('edit-stock-id').value = '';
+            document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-plus-circle text-blue-500"></i> 종목 추가';
+            document.getElementById('modal-name').value = '';
+            document.getElementById('modal-ticker').value = '';
+            document.getElementById('modal-price').value = '';
+            document.getElementById('modal-qty').value = '';
+            document.getElementById('stock-modal').classList.remove('hidden');
+        }
+
+        function openEditStockModal(id) {
+            const stock = holdings.find(h => h.id === id);
+            if (!stock) return;
+
+            document.getElementById('edit-stock-id').value = stock.id;
+            document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-blue-500"></i> 종목 수정';
+            document.getElementById('modal-name').value = stock.name;
+            document.getElementById('modal-ticker').value = stock.ticker;
+            document.getElementById('modal-price').value = stock.price;
+            document.getElementById('modal-qty').value = stock.qty;
+            document.getElementById('stock-modal').classList.remove('hidden');
+        }
+
+        function closeStockModal() {
+            document.getElementById('stock-modal').classList.add('hidden');
+        }
+
+        function saveStock() {
+            const editId = document.getElementById('edit-stock-id').value;
+            const name = document.getElementById('modal-name').value.trim();
+            const ticker = document.getElementById('modal-ticker').value.trim().toUpperCase();
+            const price = parseFloat(document.getElementById('modal-price').value) || 0;
+            const qty = parseFloat(document.getElementById('modal-qty').value) || 0;
+
+            if (!name) return;
+
+            if (editId) {
+                const stock = holdings.find(h => h.id == editId);
+                if (stock) {
+                    stock.name = name;
+                    stock.ticker = ticker;
+                    stock.price = price;
+                    stock.qty = qty;
+                }
+            } else {
+                holdings.push({
+                    id: Date.now(),
+                    name,
+                    ticker,
+                    price,
+                    qty
+                });
+            }
+
+            closeStockModal();
+            renderHoldingsTable();
+            calculatePortfolio();
+        }
+
+        function deleteStock(id) {
+            holdings = holdings.filter(h => h.id !== id);
+            renderHoldingsTable();
+            calculatePortfolio();
+        }
+
+        // Ticker Search Popup Functions
+        function openTickerSearchModal() {
+            document.getElementById('ticker-search-modal').classList.remove('hidden');
+            document.getElementById('ticker-search-input').value = '';
+            renderTickerSearchResults('');
+        }
+
+        function closeTickerSearchModal() {
+            document.getElementById('ticker-search-modal').classList.add('hidden');
+        }
+
+        function renderTickerSearchResults(query) {
+            const container = document.getElementById('ticker-search-results');
+            container.innerHTML = '';
+            const q = query.toLowerCase().trim();
+
+            const filtered = stockDatabase.filter(s => 
+                !q || s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">일치하는 종목이 없습니다.</div>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "p-2.5 hover:bg-slate-700/50 rounded-xl cursor-pointer flex justify-between items-center transition-colors";
+                div.onclick = () => selectTickerFromSearch(s);
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-xs text-white block">${s.name}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">${s.ticker}</span>
+                    </div>
+                    <span class="text-xs font-bold text-blue-400">${s.price.toLocaleString()}원</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function selectTickerFromSearch(stock) {
+            document.getElementById('modal-name').value = stock.name;
+            document.getElementById('modal-ticker').value = stock.ticker;
+            document.getElementById('modal-price').value = stock.price;
+            closeTickerSearchModal();
+        }
+
+        function handleModalNameInput(val) {
+            const query = val.toLowerCase().trim();
+            if (!query) return;
+
+            // 1. Exact match search
+            let found = stockDatabase.find(s => 
+                s.name.toLowerCase() === query || 
+                s.name.toLowerCase().replace(/\s+/g, '') === query.replace(/\s+/g, '') ||
+                s.name.toLowerCase().includes(query) ||
+                s.ticker.toLowerCase() === query
+            );
+
+            if (found) {
+                document.getElementById('modal-ticker').value = found.ticker;
+                document.getElementById('modal-price').value = found.price;
+            }
+        }
+
+        function syncAllQuotes() {
+            holdings.forEach(h => {
+                const match = stockDatabase.find(s => s.ticker === h.ticker || s.name === h.name);
+                if (match) h.price = match.price;
+            });
+            renderHoldingsTable();
+            calculatePortfolio();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('portfolioDonutChart').getContext('2d');
+            portfolioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['현금', ...holdings.map(h => h.name)],
+                    datasets: [{
+                        data: [3000000, ...holdings.map(h => h.price * h.qty)],
+                        backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!portfolioChart) return;
+            const cash = parseFloat(document.getElementById('cash-balance').value) || 0;
+            portfolioChart.data.labels = ['현금', ...holdings.map(h => h.name)];
+            portfolioChart.data.datasets[0].data = [cash, ...holdings.map(h => h.price * h.qty)];
+            portfolioChart.update();
+        }
+    </script>
+</body>
+</html>
