@@ -432,9 +432,6 @@
                         <button onclick="exportCSV()" class="flex-1 sm:flex-none px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1">
                             <i class="fa-solid fa-file-excel text-emerald-400"></i> CSV
                         </button>
-                        <button onclick="confirmResetAllData()" class="flex-1 sm:flex-none px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/60 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-rotate-left text-rose-400"></i> 초기화
-                        </button>
                     </div>
                 </div>
 
@@ -562,8 +559,6 @@
         let showMainAmounts = false;
         let showNetInvested = false;
         let initialCapital = 0;
-        const STORAGE_KEY = 'portfolio_rebalancer_data_v1';
-
         let portfolio = {
             targetStockRatio: 90,
             targetMainStockRatio: 80,
@@ -630,79 +625,9 @@
         let trendChartInstance = null;
         let returnTrendChartInstance = null;
 
-        // Save data state to LocalStorage
-        function saveData() {
-            try {
-                const payload = {
-                    portfolio,
-                    initialCapital,
-                    showAmounts,
-                    showNetInvested
-                };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-            } catch (e) {
-                console.error("Local storage save failed:", e);
-            }
-        }
-
-        // Load data state from LocalStorage
-        function loadData() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    if (data.portfolio) portfolio = data.portfolio;
-                    if (data.initialCapital !== undefined) initialCapital = data.initialCapital;
-                    if (data.showAmounts !== undefined) showAmounts = data.showAmounts;
-                    if (data.showNetInvested !== undefined) showNetInvested = data.showNetInvested;
-                }
-            } catch (e) {
-                console.error("Local storage load failed:", e);
-            }
-        }
-
         window.onload = function() {
-            loadData();
-
-            // Restore UI Input states
-            const cashBalInput = document.getElementById('cash-balance');
-            if (cashBalInput) cashBalInput.value = portfolio.cashBalance || 0;
-
-            const stockRatioSlider = document.getElementById('stock-ratio-slider');
-            if (stockRatioSlider) {
-                stockRatioSlider.value = portfolio.targetStockRatio || 90;
-                updateRatios(stockRatioSlider.value);
-            }
-
-            const mainStockSlider = document.getElementById('main-stock-target-slider');
-            if (mainStockSlider) {
-                mainStockSlider.value = portfolio.targetMainStockRatio || 80;
-                updateMainStockTargetRatio(mainStockSlider.value);
-            }
-
-            const initCapitalInput = document.getElementById('initial-capital-input');
-            if (initCapitalInput) initCapitalInput.value = initialCapital || '';
-
-            const initCapitalDisplay = document.getElementById('initial-capital-display');
-            if (initCapitalDisplay) initCapitalDisplay.innerText = `${Math.round(initialCapital || 0).toLocaleString()}원`;
-
-            const btnIcon = document.getElementById('toggle-amount-icon');
-            const btnText = document.getElementById('toggle-amount-text');
-            if (showAmounts) {
-                if (btnIcon) btnIcon.className = "fa-solid fa-eye text-emerald-400";
-                if (btnText) btnText.innerText = "금액 숨기기";
-            }
-
-            const netIcon = document.getElementById('toggle-net-invested-icon');
-            const netText = document.getElementById('toggle-net-invested-text');
-            if (showNetInvested) {
-                if (netIcon) netIcon.className = "fa-solid fa-eye text-emerald-400";
-                if (netText) netText.innerText = "총 투입금(Net) 숨기기";
-            }
-
             renderHoldingsTable();
             renderCashHistory();
-            renderLogList();
             calculatePortfolio();
             initCharts();
         };
@@ -739,126 +664,6 @@
             const ratioDisp = document.getElementById('ratio-display');
             if (ratioDisp) ratioDisp.innerText = `주식 ${portfolio.targetStockRatio}% : 현금 ${cashRatio}%`;
             calculatePortfolio();
-            saveData();
-        }
-
-        function updateMainStockTargetRatio(val) {
-            portfolio.targetMainStockRatio = parseInt(val);
-            const nonMainRatio = 100 - portfolio.targetMainStockRatio;
-            const mainRatioDisp = document.getElementById('main-target-ratio-display');
-            if (mainRatioDisp) mainRatioDisp.innerText = `주종목 ${portfolio.targetMainStockRatio}% : 비주종목 ${nonMainRatio}%`;
-            calculatePortfolio();
-            saveData();
-        }
-
-        function toggleHideAmounts() {
-            showAmounts = !showAmounts;
-            const btnIcon = document.getElementById('toggle-amount-icon');
-            const btnText = document.getElementById('toggle-amount-text');
-            
-            if (showAmounts) {
-                if (btnIcon) btnIcon.className = "fa-solid fa-eye text-emerald-400";
-                if (btnText) btnText.innerText = "금액 숨기기";
-            } else {
-                if (btnIcon) btnIcon.className = "fa-solid fa-eye-slash text-slate-400";
-                if (btnText) btnText.innerText = "금액 보기";
-            }
-            calculatePortfolio();
-            saveData();
-        }
-
-        function toggleHideNetInvested() {
-            showNetInvested = !showNetInvested;
-            const btnIcon = document.getElementById('toggle-net-invested-icon');
-            const btnText = document.getElementById('toggle-net-invested-text');
-            
-            if (showNetInvested) {
-                if (btnIcon) btnIcon.className = "fa-solid fa-eye text-emerald-400";
-                if (btnText) btnText.innerText = "총 투입금(Net) 숨기기";
-            } else {
-                if (btnIcon) btnIcon.className = "fa-solid fa-eye-slash text-blue-400";
-                if (btnText) btnText.innerText = "총 투입금(Net) 보기";
-            }
-            calculatePortfolio();
-            saveData();
-        }
-
-        function calculatePortfolio() {
-            const totalStockValue = portfolio.holdings.reduce((sum, h) => sum + (h.price * h.qty), 0);
-            const cashBalInput = document.getElementById('cash-balance');
-            if (cashBalInput) {
-                portfolio.cashBalance = parseFloat(cashBalInput.value) || 0;
-            }
-            const totalAsset = totalStockValue + portfolio.cashBalance;
-
-            const totalDeposits = portfolio.cashHistory
-                .filter(item => item.category === 'deposit')
-                .reduce((sum, item) => sum + item.amount, 0);
-
-            const totalWithdrawals = portfolio.cashHistory
-                .filter(item => item.category === 'withdraw')
-                .reduce((sum, item) => sum + item.amount, 0);
-
-            const netInvested = initialCapital + totalDeposits - totalWithdrawals;
-
-            let returnRate = 0;
-            if (netInvested > 0) {
-                returnRate = ((totalAsset - netInvested) / netInvested) * 100;
-            }
-
-            const totalStockValueElem = document.getElementById('total-stock-value');
-            if (totalStockValueElem) {
-                totalStockValueElem.innerText = showAmounts ? `${Math.round(totalStockValue).toLocaleString()}원` : `••••••원`;
-            }
-
-            const totalAssetValueElem = document.getElementById('total-asset-value');
-            if (totalAssetValueElem) {
-                totalAssetValueElem.innerText = showAmounts ? `${Math.round(totalAsset).toLocaleString()}원` : `••••••원`;
-            }
-
-            const netInvestedElem = document.getElementById('net-invested-display');
-            if (netInvestedElem) {
-                if (showNetInvested) {
-                    netInvestedElem.innerText = `총 투입금(Net): ${Math.round(netInvested).toLocaleString()}원`;
-                } else {
-                    netInvestedElem.innerText = `총 투입금(Net): ••••••원`;
-                }
-            }
-
-            const returnBadge = document.getElementById('return-rate-badge');
-            if (returnBadge) {
-                const sign = returnRate > 0 ? '+' : '';
-                returnBadge.innerText = `${sign}${returnRate.toFixed(2)}%`;
-
-                if (returnRate > 0) {
-                    returnBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-                } else if (returnRate < 0) {
-                    returnBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
-                } else {
-                    returnBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 border border-slate-600";
-                }
-            }
-
-            const currentStockRatio = totalAsset > 0 ? Math.round((totalStockValue / totalAsset) * 100) : 0;
-            const currentCashRatio = 100 - currentStockRatio;
-            const currentStockRatioElem = document.getElementById('current-stock-ratio-text');
-            if (currentStockRatioElem) {
-                currentStockRatioElem.innerText = `${currentCashRatio}%`;
-            }
-
-            const mainHoldingsValue = portfolio.holdings.filter(h => h.isMain).reduce((sum, h) => sum + (h.price * h.qty), 0);
-            const currentMainStockRatio = totalStockValue > 0 ? Math.round((mainHoldingsValue / totalStockValue) * 100) : 0;
-            const currentMainRatioElem = document.getElementById('current-main-stock-ratio-text');
-            if (currentMainRatioElem) {
-                currentMainRatioElem.innerText = `${currentMainStockRatio}%`;
-            }
-
-            // 정확한 목표 주식 총액 및 현금 총액 계산
-            const targetStockAmount = totalAsset * (portfolio.targetStockRatio / 100);
-
-            renderExecutionList(totalStockValue, targetStockAmount, totalAsset);
-            renderHoldingsTable();
-            saveData();
         }
 
         function updateMainStockTargetRatio(val) {
@@ -1247,7 +1052,58 @@
             portfolio.executedOrders[ticker] = '';
             calculatePortfolio();
             renderCashHistory();
-            saveData();
+        }
+
+        function renderHoldingsTable() {
+            const tableBody = document.getElementById('holdings-table-body');
+            if (!tableBody) return;
+
+            const totalStockValue = portfolio.holdings.reduce((sum, h) => sum + (h.price * h.qty), 0);
+
+            if (portfolio.holdings.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">등록된 종목이 없습니다.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = portfolio.holdings.map(h => {
+                const evalVal = h.price * h.qty;
+                const ratio = totalStockValue > 0 ? ((evalVal / totalStockValue) * 100).toFixed(1) : 0;
+                const isMainStock = h.isMain !== undefined ? h.isMain : false;
+
+                return `
+                    <tr class="hover:bg-slate-900/50 transition-all border-b border-slate-800/60">
+                        <td class="py-2.5 px-3 text-center">
+                            <button onclick="toggleMainStock(${h.id})" class="text-base transition-transform hover:scale-110 focus:outline-none" title="주종목 여부 설정">
+                                ${isMainStock ? '<i class="fa-solid fa-star text-amber-400 drop-shadow"></i>' : '<i class="fa-regular fa-star text-slate-600 hover:text-slate-400"></i>'}
+                            </button>
+                        </td>
+                        <td class="py-2.5 px-3">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-slate-100">${h.name}</span>
+                                ${isMainStock ? '<span class="text-[9px] font-black bg-amber-500/20 text-amber-400 px-1.5 py-0.2 rounded border border-amber-500/30">주종목</span>' : ''}
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-mono">${h.ticker}</div>
+                        </td>
+                        <td class="py-2.5 px-3 text-right">
+                            <input type="number" value="${h.price}" onchange="updateStockPrice(${h.id}, this.value)" class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right font-semibold text-slate-200 text-xs">
+                        </td>
+                        <td class="py-2.5 px-3 text-right">
+                            <input type="number" step="${document.getElementById('fractional-support')?.checked ? '0.01' : '1'}" value="${h.qty}" onchange="updateStockQty(${h.id}, this.value)" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right font-semibold text-slate-200 text-xs">
+                        </td>
+                        <td class="py-2.5 px-3 text-right font-bold text-slate-200">
+                            ${Math.round(evalVal).toLocaleString()}원
+                        </td>
+                        <td class="py-2.5 px-3 text-right font-bold text-blue-400">
+                            ${ratio}%
+                        </td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button onclick="confirmDeleteStock(${h.id})" class="text-rose-400 hover:text-rose-300 p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function toggleMainStock(id) {
@@ -1255,7 +1111,6 @@
             if (item) {
                 item.isMain = !item.isMain;
                 calculatePortfolio();
-                saveData();
                 showToast('주종목 변경', `${item.name} 종목이 ${item.isMain ? '주종목으로 지정' : '일반종목으로 변경'}되었습니다.`, 'info');
             }
         }
@@ -1265,7 +1120,6 @@
             if (item) {
                 item.price = parseFloat(newPrice) || 0;
                 calculatePortfolio();
-                saveData();
             }
         }
 
@@ -1276,7 +1130,6 @@
                 const parsed = parseFloat(newQty) || 0;
                 item.qty = isFractional ? Math.round(parsed * 10000) / 10000 : Math.round(parsed);
                 calculatePortfolio();
-                saveData();
             }
         }
 
@@ -1287,7 +1140,6 @@
             showConfirmModal(`종목 삭제 (${item.name})`, `${item.name} 종목을 목록에서 삭제하시겠습니까?`, () => {
                 portfolio.holdings = portfolio.holdings.filter(h => h.id !== id);
                 calculatePortfolio();
-                saveData();
                 showToast('삭제 완료', `${item.name} 종목이 삭제되었습니다.`, 'info');
             });
         }
@@ -1354,7 +1206,6 @@
             });
 
             calculatePortfolio();
-            saveData();
             closeTickerSearchModal();
             showToast('종목 추가 완료', `${found.name} 종목이 추가되었습니다.`, 'success');
         }
@@ -1368,10 +1219,12 @@
 
             let updatedCount = 0;
 
+            // CORS 우회 및 금융 API 다중 호출 함수
             const fetchQuote = async (holding) => {
                 const tickerCode = holding.ticker.split('.')[0];
                 const isKoreanStock = holding.ticker.endsWith('.KS') || holding.ticker.endsWith('.KQ') || /^\d{6}$/.test(tickerCode);
 
+                // CORS 우회 프록시 후보 리스트
                 const proxies = [
                     (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
                     (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -1384,7 +1237,7 @@
                     for (const proxyFn of proxies) {
                         try {
                             const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 2000);
+                            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2초 타임아웃
                             
                             const response = await fetch(proxyFn(targetUrl), { 
                                 signal: controller.signal,
@@ -1394,6 +1247,7 @@
 
                             if (response.ok) {
                                 const data = await response.json();
+                                // 네이버 모바일 통합 API 파싱
                                 const priceStr = data?.totalInfos?.[0]?.value || data?.dealPrice || data?.closePrice;
                                 if (priceStr) {
                                     const cleanPrice = parseFloat(String(priceStr).replace(/,/g, ''));
@@ -1406,11 +1260,13 @@
                                 }
                             }
                         } catch (e) {
+                            // 다음 프록시 서버 재시도
                             continue;
                         }
                     }
                 }
 
+                // 해외 주식 및 국내 주식 차선책: Yahoo Finance Chart API
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${holding.ticker}?interval=1m&range=1d`;
                 for (const proxyFn of proxies) {
                     try {
@@ -1438,11 +1294,11 @@
                 return false;
             };
 
+            // 모든 보유 종목 병렬 동기화 처리
             const results = await Promise.all(portfolio.holdings.map(h => fetchQuote(h)));
             updatedCount = results.filter(Boolean).length;
 
             calculatePortfolio();
-            saveData();
 
             if (updatedCount > 0) {
                 showToast('실시간 동기화 완료', `${updatedCount}개 종목의 증권사 최신 시세를 수신했습니다.`, 'success');
@@ -1602,37 +1458,6 @@
             closeCashModal();
             calculatePortfolio();
             renderCashHistory();
-            saveData();
-        }
-
-        function deleteCashHistory(id) {
-            portfolio.cashHistory = portfolio.cashHistory.filter(item => item.id !== id);
-            renderCashHistory();
-            calculatePortfolio();
-            saveData();
-            showToast('삭제 완료', '자금 내역이 삭제되었습니다.', 'info');
-        }
-
-        function setInitialCapital() {
-            const input = document.getElementById('initial-capital-input');
-            if (!input) return;
-
-            const val = parseFloat(input.value) || 0;
-            initialCapital = val;
-            
-            const display = document.getElementById('initial-capital-display');
-            if (display) display.innerText = `${Math.round(val).toLocaleString()}원`;
-
-            calculatePortfolio();
-            saveData();
-            showToast('저장 완료', '초기 원금이 성공적으로 저장되었습니다.', 'success');
-        }
-
-        function confirmResetAllData() {
-            showConfirmModal('전체 데이터 초기화', '저장된 모든 종목, 입출금 내역, 일지 스냅샷 데이터를 삭제하고 기본 상태로 초기화하시겠습니까?', () => {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            });
         }
 
         function deleteCashHistory(id) {
@@ -1791,7 +1616,6 @@
 
             portfolio.logs.unshift(snapshot);
             renderLogList();
-            saveData();
 
             if (trendChartInstance) {
                 trendChartInstance.data.labels.push(snapshot.date.split(' ')[1] || '기록');
